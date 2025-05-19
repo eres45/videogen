@@ -1,0 +1,72 @@
+[app]
+# Video source provider - pexels or pixabay
+video_source = "${VIDEO_SOURCE:-pexels}"
+
+# Hide configuration panel in WebUI
+hide_config = ${HIDE_CONFIG:-false}
+
+# API Keys (configured via environment variables in Render)
+pexels_api_keys = ["${PEXELS_API_KEY}"]
+pixabay_api_keys = ["${PIXABAY_API_KEY}"]
+
+# LLM Provider selection
+# Options: openai, moonshot, azure, qwen, deepseek, gemini, ollama, g4f, oneapi, cloudflare, ernie, pollinations
+llm_provider = "${LLM_PROVIDER:-pollinations}"
+
+# OpenAI settings (not used with current configuration)
+openai_api_key = "${OPENAI_API_KEY:-}"
+openai_base_url = "${OPENAI_BASE_URL:-}"
+openai_model_name = "${OPENAI_MODEL:-gpt-4o-mini}"
+
+# Pollinations AI settings - using for text generation
+pollinations_api_key = "${POLLINATIONS_API_KEY:-}"
+pollinations_base_url = "${POLLINATIONS_BASE_URL:-https://pollinations.ai/api/v1}"
+pollinations_model_name = "${POLLINATIONS_MODEL:-openai-fast}"
+
+# Subtitle provider settings
+# Options: edge, whisper, none
+subtitle_provider = "${SUBTITLE_PROVIDER:-edge}"
+
+# External endpoint for video download
+endpoint = "${RENDER_EXTERNAL_URL}"
+
+# Storage location for video materials
+material_directory = "/MoneyPrinterTurbo/storage/cache_videos"
+
+# Redis for state management (can be enabled if you add Redis as a service)
+enable_redis = ${ENABLE_REDIS:-false}
+redis_host = "${REDIS_HOST:-localhost}"
+redis_port = ${REDIS_PORT:-6379}
+redis_db = ${REDIS_DB:-0}
+redis_password = "${REDIS_PASSWORD:-}"
+
+# Maximum concurrent video generation tasks
+max_concurrent_tasks = ${MAX_CONCURRENT_TASKS:-3}
+
+# Task cleanup settings
+# Videos older than this many days will be automatically deleted
+cleanup_days = ${CLEANUP_DAYS:-2}
+
+[whisper]
+# Whisper model configuration for subtitle generation
+model_size = "${WHISPER_MODEL_SIZE:-large-v3}"
+device = "${WHISPER_DEVICE:-CPU}"
+compute_type = "${WHISPER_COMPUTE_TYPE:-int8}"
+
+[proxy]
+# HTTP/HTTPS proxy configuration if needed
+http = "${HTTP_PROXY:-}"
+https = "${HTTPS_PROXY:-}"
+
+[server]
+# Web server configuration
+listen_host = "0.0.0.0"  # Listen on all interfaces
+listen_port = ${PORT}
+reload_debug = ${DEBUG:-false}
+
+# Logging configuration
+[logging]
+level = "${LOG_LEVEL:-INFO}"
+format = "${LOG_FORMAT:-[%(asctime)s] [%(process)d] [%(levelname)s] %(message)s}"
+log_to_file = ${LOG_TO_FILE:-false}
+log_file_path = "${LOG_FILE_PATH:-/MoneyPrinterTurbo/storage/logs/app.log}"

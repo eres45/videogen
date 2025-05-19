@@ -1,0 +1,31 @@
+services:
+  - type: web
+    name: moneyprinterturbo
+    env: python
+    buildCommand: ./build.sh
+    startCommand: bash ./start.sh
+    plan: standard
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.0
+      - key: PEXELS_API_KEY
+        value: "wDEUJxQv8o9VV0gYat55LnXh0Sl9YlKBH5qZCOlDp03oEKGxJSXX23IH"
+      - key: LLM_PROVIDER
+        value: "pollinations"
+      - key: POLLINATIONS_MODEL
+        value: "openai-fast"
+      - key: MAX_CONCURRENT_TASKS
+        value: "3"
+      - key: CLEANUP_DAYS
+        value: "2"
+    healthCheckPath: /health
+    autoDeploy: true
+    disk:
+      name: moneyprinterturbo-storage
+      mountPath: /MoneyPrinterTurbo/storage
+      sizeGB: 10
+    scaling:
+      minInstances: 1
+      maxInstances: 1
+      targetMemoryPercent: 80
+      targetCPUPercent: 70
