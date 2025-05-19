@@ -125,7 +125,8 @@ def _generate_response(prompt: str) -> str:
                 except Exception as e:
                     raise Exception(f"[{llm_provider}] error: {str(e)}")
 
-            if llm_provider not in ["pollinations", "ollama"]:  # Skip validation for providers that don't require API key
+            # Skip validation for providers that don't need API keys
+            if llm_provider not in ["pollinations", "ollama", "g4f"]:
                 if not api_key:
                     raise ValueError(
                         f"{llm_provider}: api_key is not set, please set it in the config.toml file."
