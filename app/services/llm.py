@@ -86,44 +86,30 @@ def _generate_response(prompt: str) -> str:
                     )
             elif llm_provider == "pollinations":
                 try:
-                    base_url = config.app.get("pollinations_base_url", "")
-                    if not base_url:
-                        base_url = "https://text.pollinations.ai/openai"
-                    model_name = config.app.get("pollinations_model_name", "openai-fast")
-                   
-                    # Prepare the payload
-                    payload = {
-                        "model": model_name,
-                        "messages": [
-                            {"role": "user", "content": prompt}
-                        ],
-                        "seed": 101  # Optional but helps with reproducibility
-                    }
+                    # Using the simple GET endpoint for Pollinations AI
+                    # Format: https://text.pollinations.ai/{prompt}
+                    # URL encode the prompt
+                    from urllib.parse import quote_plus
+                    encoded_prompt = quote_plus(prompt)
+                    api_url = f"https://text.pollinations.ai/{encoded_prompt}"
                     
-                    # Optional parameters if configured
-                    if config.app.get("pollinations_private"):
-                        payload["private"] = True
-                    if config.app.get("pollinations_referrer"):
-                        payload["referrer"] = config.app.get("pollinations_referrer")
+                    logger.info(f"Making request to Pollinations AI: {api_url}")
                     
-                    headers = {
-                        "Content-Type": "application/json"
-                    }
-                    
-                    # Make the API request
-                    response = requests.post(base_url, headers=headers, json=payload)
+                    # Make a simple GET request
+                    response = requests.get(api_url, timeout=30)
                     response.raise_for_status()
-                    result = response.json()
                     
-                    if result and "choices" in result and len(result["choices"]) > 0:
-                        content = result["choices"][0]["message"]["content"]
-                        return content.replace("\n", "")
-                    else:
-                        raise Exception(f"[{llm_provider}] returned an invalid response format")
-                        
+                    # The response should be plain text
+                    content = response.text
+                    logger.info(f"Received response from Pollinations AI: {content[:50]}...")
+                    
+                    return content.replace("\n", "")
+                
                 except requests.exceptions.RequestException as e:
+                    logger.error(f"Pollinations API request failed: {str(e)}")
                     raise Exception(f"[{llm_provider}] request failed: {str(e)}")
                 except Exception as e:
+                    logger.error(f"Pollinations API error: {str(e)}")
                     raise Exception(f"[{llm_provider}] error: {str(e)}")
 
             # Skip validation for providers that don't need API keys
