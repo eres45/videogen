@@ -21,13 +21,20 @@ find storage/cache_videos -type f -mtime +3 -delete
 echo "Configuring application..."
 cp config.render.toml config.toml
 
+# Set default API keys if environment variables are not set
+PEXELS_API_KEY=${PEXELS_API_KEY:-'wDEUJxQv8o9VV0gYat55LnXh0Sl9YlKBH5qZCOlDp03oEKGxJSXX23IH'}
+PIXABAY_API_KEY=${PIXABAY_API_KEY:-'50386645-0aa0825cedfcdb43b883ce256'}
+LLM_PROVIDER=${LLM_PROVIDER:-'pollinations'}
+HIDE_CONFIG=${HIDE_CONFIG:-'true'}
+
 # Replace environment variable placeholders with actual values
-sed -i "s/\${PEXELS_API_KEY}/${PEXELS_API_KEY:-''}/g" config.toml
-sed -i "s/\${PIXABAY_API_KEY}/${PIXABAY_API_KEY:-''}/g" config.toml
+sed -i "s/\${PEXELS_API_KEY}/${PEXELS_API_KEY}/g" config.toml
+sed -i "s/\${PIXABAY_API_KEY}/${PIXABAY_API_KEY}/g" config.toml
 sed -i "s/\${OPENAI_API_KEY}/${OPENAI_API_KEY:-''}/g" config.toml
 sed -i "s/\${POLLINATIONS_API_KEY}/${POLLINATIONS_API_KEY:-''}/g" config.toml
 sed -i "s/\${POLLINATIONS_MODEL}/${POLLINATIONS_MODEL:-'openai-fast'}/g" config.toml
-sed -i "s/\${LLM_PROVIDER}/${LLM_PROVIDER:-'pollinations'}/g" config.toml
+sed -i "s/\${LLM_PROVIDER}/${LLM_PROVIDER}/g" config.toml
+sed -i "s/\${HIDE_CONFIG}/${HIDE_CONFIG}/g" config.toml
 sed -i "s~\${RENDER_EXTERNAL_URL}~$RENDER_EXTERNAL_URL~g" config.toml
 sed -i "s/\${PORT}/$PORT/g" config.toml
 

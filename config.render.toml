@@ -3,7 +3,7 @@
 video_source = "${VIDEO_SOURCE:-pexels}"
 
 # Hide configuration panel in WebUI
-hide_config = ${HIDE_CONFIG:-false}
+hide_config = ${HIDE_CONFIG:-true}
 
 # API Keys (configured via environment variables in Render)
 pexels_api_keys = ["${PEXELS_API_KEY}"]
