@@ -921,15 +921,11 @@ if start_button:
         scroll_to_bottom()
         st.stop()
 
-    if params.video_source == "pexels" and not config.app.get("pexels_api_keys", ""):
-        st.error(tr("Please Enter the Pexels API Key"))
-        scroll_to_bottom()
-        st.stop()
-
-    if params.video_source == "pixabay" and not config.app.get("pixabay_api_keys", ""):
-        st.error(tr("Please Enter the Pixabay API Key"))
-        scroll_to_bottom()
-        st.stop()
+    # Skip API key validation - we're using hardcoded keys in the material.py service
+    # Hardcoded keys: 
+    # - Pexels: wDEUJxQv8o9VV0gYat55LnXh0Sl9YlKBH5qZCOlDp03oEKGxJSXX23IH
+    # - Pixabay: 50386645-0aa0825cedfcdb43b883ce256
+    pass
 
     if uploaded_files:
         local_videos_dir = utils.storage_dir("local_videos", create=True)
