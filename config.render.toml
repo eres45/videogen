@@ -41,7 +41,8 @@ redis_db = ${REDIS_DB:-0}
 redis_password = "${REDIS_PASSWORD:-}"
 
 # Maximum concurrent video generation tasks
-max_concurrent_tasks = ${MAX_CONCURRENT_TASKS:-3}
+# Reduced to prevent memory overflow
+max_concurrent_tasks = ${MAX_CONCURRENT_TASKS:-1}
 
 # Task cleanup settings
 # Videos older than this many days will be automatically deleted

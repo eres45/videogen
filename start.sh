@@ -75,5 +75,10 @@ pip install --no-cache-dir psutil
 echo "Starting application on port: $PORT"
 echo "External URL: $RENDER_EXTERNAL_URL"
 
+# Start memory monitoring in background
+echo "Starting memory monitor..."
+python memory_monitor.py &
+
 # Start the application
+echo "Starting main application..."
 python main.py

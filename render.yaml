@@ -5,6 +5,7 @@ services:
     buildCommand: ./build.sh
     startCommand: bash ./start.sh
     plan: standard
+    runtime: python
     envVars:
       - key: PYTHON_VERSION
         value: 3.11.0
@@ -15,7 +16,7 @@ services:
       - key: POLLINATIONS_MODEL
         value: "openai-fast"
       - key: MAX_CONCURRENT_TASKS
-        value: "3"
+        value: "1"
       - key: CLEANUP_DAYS
         value: "2"
     healthCheckPath: /health
@@ -27,5 +28,5 @@ services:
     scaling:
       minInstances: 1
       maxInstances: 1
-      targetMemoryPercent: 80
-      targetCPUPercent: 70
+      targetMemoryPercent: 70
+      targetCPUPercent: 60
