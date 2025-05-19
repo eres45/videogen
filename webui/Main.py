@@ -199,8 +199,8 @@ def tr(key):
     return loc.get("Translation", {}).get(key, key)
 
 
-# 创建基础设置折叠框
-if not config.app.get("hide_config", False):
+# Always hide configuration panel in the Render deployment
+if False:  # Forcefully hide config panel
     with st.expander(tr("Basic Settings"), expanded=False):
         config_panels = st.columns(3)
         left_config_panel = config_panels[0]
