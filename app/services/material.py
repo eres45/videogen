@@ -15,8 +15,20 @@ requested_count = 0
 
 
 def get_api_key(cfg_key: str):
+    # Hardcoded API keys as fallbacks
+    default_keys = {
+        "pexels_api_keys": ["wDEUJxQv8o9VV0gYat55LnXh0Sl9YlKBH5qZCOlDp03oEKGxJSXX23IH"],
+        "pixabay_api_keys": ["50386645-0aa0825cedfcdb43b883ce256"]
+    }
+    
+    # Get keys from config or use hardcoded defaults
     api_keys = config.app.get(cfg_key)
-    if not api_keys:
+    
+    # If no keys in config, use our defaults
+    if not api_keys and cfg_key in default_keys:
+        logger.info(f"Using default {cfg_key} from hardcoded values")
+        return default_keys[cfg_key][0]
+    elif not api_keys:
         raise ValueError(
             f"\n\n##### {cfg_key} is not set #####\n\nPlease set it in the config.toml file: {config.config_file}\n\n"
             f"{utils.to_json(config.app)}"
