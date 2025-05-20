@@ -1,0 +1,4 @@
+psutil>=5.9.0
+memory-profiler>=0.60.0
+pytesseract==0.3.9
+moviepy==1.0.3

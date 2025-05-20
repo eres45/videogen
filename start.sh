@@ -75,10 +75,15 @@ pip install --no-cache-dir psutil
 echo "Starting application on port: $PORT"
 echo "External URL: $RENDER_EXTERNAL_URL"
 
-# Start memory monitoring in background
-echo "Starting memory monitor..."
-python memory_monitor.py &
+# Apply aggressive memory optimizations for Render
+echo "Applying aggressive memory optimizations for Render..."
+python render_memory_fix.py &
 
-# Start the application
-echo "Starting main application..."
-python main.py
+# Start the application with reduced memory settings
+echo "Starting main application in memory-efficient mode..."
+export PYTHONMALLOC=malloc
+export MALLOC_TRIM_THRESHOLD_=65536
+export PYTHONUNBUFFERED=1
+export OPENBLAS_NUM_THREADS=1
+export OMP_NUM_THREADS=1
+python -u main.py
