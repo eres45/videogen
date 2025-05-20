@@ -41,8 +41,16 @@ redis_db = ${REDIS_DB:-0}
 redis_password = "${REDIS_PASSWORD:-}"
 
 # Maximum concurrent video generation tasks
-# Reduced to prevent memory overflow
+# Very restricted to prevent memory overflow on free Render plan
 max_concurrent_tasks = ${MAX_CONCURRENT_TASKS:-1}
+
+# Video rendering settings optimized for low memory
+low_memory_mode = true
+video_width = 480
+video_height = 720
+ffmpeg_threads = 1
+ffmpeg_preset = "ultrafast"
+ffmpeg_crf = 32  # Lower quality but uses much less memory
 
 # Task cleanup settings
 # Videos older than this many days will be automatically deleted

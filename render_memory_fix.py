@@ -69,30 +69,106 @@ def delete_old_files(directory, days=1, extensions=None):
                     
     return count
 
+def patch_ffmpeg_for_low_memory():
+    """Create a wrapper script for ffmpeg to use low memory settings"""
+    logger.info("Creating low-memory ffmpeg wrapper...")
+    
+    # Create a wrapper script for ffmpeg
+    ffmpeg_wrapper = """
+#!/bin/bash
+set -e
+
+# Get all arguments
+args=("$@")
+
+# Add memory-limiting arguments
+extra_args=(
+  "-threads" "1"
+  "-preset" "ultrafast"
+  "-tune" "fastdecode"
+  "-deadline" "realtime"
+  "-cpu-used" "5"
+  "-memory-limit" "256M"
+  "-tile-columns" "0"
+  "-frame-parallel" "0"
+)
+
+# Execute real ffmpeg with memory constraints
+exec nice -n 19 ffmpeg ${extra_args[@]} ${args[@]}
+"""
+    
+    # Write wrapper to a file
+    wrapper_path = "/tmp/ffmpeg_low_mem"
+    try:
+        with open(wrapper_path, 'w') as f:
+            f.write(ffmpeg_wrapper)
+        
+        # Make it executable
+        os.chmod(wrapper_path, 0o755)
+        logger.info(f"Created ffmpeg wrapper at {wrapper_path}")
+        
+        # Set environment variable to use our wrapper
+        os.environ["IMAGEIO_FFMPEG_EXE"] = wrapper_path
+        
+        return True
+    except Exception as e:
+        logger.error(f"Failed to create ffmpeg wrapper: {e}")
+        return False
+
 def apply_memory_patches():
     """Apply memory-saving patches to the app"""
-    # Patch 1: Limit video cache
-    logger.info("Applying memory patches...")
+    logger.info("Applying aggressive memory patches...")
     
     # Patch the maximum concurrent tasks
     from app.config import config
     if hasattr(config, 'app'):
         logger.info("Setting max_concurrent_tasks to 1")
         config.app['max_concurrent_tasks'] = 1
+        
+        # Patch video parameters for low quality but low memory usage
+        logger.info("Adjusting video quality settings for low memory usage")
+        if 'ffmpeg_params' not in config.app:
+            config.app['ffmpeg_params'] = {}
+        
+        # Set very low memory ffmpeg parameters
+        config.app['ffmpeg_params'] = {
+            'threads': '1',
+            'preset': 'ultrafast',
+            'crf': '35',  # Lower quality but much less memory
+            'vf': 'scale=480:-2',  # Reduce resolution dramatically
+            'fs': '10M'  # Limit file size to 10MB
+        }
+    
+    # Patch ffmpeg to use less memory
+    if patch_ffmpeg_for_low_memory():
+        logger.info("Successfully patched ffmpeg for low memory usage")
     
     # Patch any video processing functions to use less memory
     try:
         # If MoviePy is used, patch its memory usage
         import moviepy.config as moviepy_config
-        moviepy_config.FFMPEG_BINARY = "ffmpeg"
+        moviepy_config.FFMPEG_BINARY = "/tmp/ffmpeg_low_mem"
         moviepy_config.IMAGEMAGICK_BINARY = "convert"
         
-        # Override MoviePy's default to use less memory
-        os.environ["IMAGEIO_FFMPEG_EXE"] = "ffmpeg"
+        # Patch moviepy to use less memory
+        from moviepy.video.io.ffmpeg_reader import ffmpeg_parse_infos
+        from moviepy.config import get_setting
+        import subprocess
         
-        logger.info("Patched MoviePy configuration for lower memory usage")
-    except ImportError:
-        pass
+        # Monkey patch the ffmpeg info parsing function to use less memory
+        original_parse_infos = ffmpeg_parse_infos
+        def low_memory_parse_infos(filename, print_infos=False, check_duration=True, fps_source='tbr'):
+            """Monkey-patched version that uses less memory"""
+            # Use our low-memory ffmpeg wrapper
+            moviepy_config.FFMPEG_BINARY = "/tmp/ffmpeg_low_mem"
+            return original_parse_infos(filename, print_infos, check_duration, fps_source)
+        
+        # Replace the original function
+        ffmpeg_parse_infos = low_memory_parse_infos
+        logger.info("Patched MoviePy ffmpeg functions for lower memory usage")
+        
+    except ImportError as e:
+        logger.error(f"Could not patch MoviePy: {e}")
     
     # Lower process priority to avoid killing the container
     try:
