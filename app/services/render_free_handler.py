@@ -176,22 +176,103 @@ class RenderFreeVideoHandler:
             return False
     
     @staticmethod
-    def create_placeholder_video(output_path: str) -> bool:
-        """Create a simple text file instead of video to avoid memory usage"""
+    def create_minimal_video(output_path: str, prompt: str = "Video") -> bool:
+        """Create a minimal video using extremely low memory techniques"""
         try:
-            # Create the directory if it doesn't exist
-            os.makedirs(os.path.dirname(output_path), exist_ok=True)
+            import subprocess
+            import tempfile
+            import shutil
+            from pathlib import Path
             
-            # Write a placeholder file explaining the memory constraints
-            with open(output_path, 'w') as f:
-                f.write("Video generation disabled on Render free tier to avoid memory errors.\n")
-                f.write("To generate videos, please upgrade to a paid Render plan or run locally.")
+            logger.info(f"Creating minimal video for prompt: {prompt}")
             
-            logger.info(f"Created placeholder file at {output_path}")
-            return True
+            # Create temp directory for our work
+            with tempfile.TemporaryDirectory() as temp_dir:
+                # Generate a single frame with text
+                text_frame = os.path.join(temp_dir, "frame.txt")
+                with open(text_frame, 'w') as f:
+                    f.write(f"drawtext=text='{prompt}':x=(w-tw)/2:y=(h-th)/2:fontsize=24:fontcolor=white")
+                
+                # Create a tiny 10-second video with the specified prompt as text
+                # Using the absolute minimum settings for ffmpeg
+                cmd = [
+                    "ffmpeg",
+                    "-f", "lavfi",  # Use libavfilter virtual input
+                    "-i", "color=c=black:s=320x240:d=5",  # Create a black background for 5 seconds
+                    "-vf", f"drawtext=text='{prompt}':x=(w-tw)/2:y=(h-th)/2:fontsize=24:fontcolor=white",  # Add text
+                    "-c:v", "libx264",  # Use x264 codec
+                    "-preset", "ultrafast",  # Fastest encoding
+                    "-tune", "fastdecode",  # Optimize for decoding speed
+                    "-pix_fmt", "yuv420p",  # Standard pixel format
+                    "-profile:v", "baseline",  # Most compatible profile
+                    "-level", "3.0",
+                    "-crf", "45",  # Very low quality
+                    "-r", "1",  # 1 frame per second
+                    "-t", "5",  # 5 second duration
+                    "-movflags", "+faststart",  # Optimize for web playback
+                    "-threads", "1",  # Use a single thread
+                    output_path
+                ]
+                
+                # Set extreme memory limit for ffmpeg subprocess
+                # Create output directory if it doesn't exist
+                os.makedirs(os.path.dirname(output_path), exist_ok=True)
+                
+                # Use subprocess with low memory
+                env = os.environ.copy()
+                env["MALLOC_ARENA_MAX"] = "1"
+                
+                # Run ffmpeg with minimal memory
+                logger.info(f"Running minimal ffmpeg: {' '.join(cmd)}")
+                process = subprocess.Popen(
+                    cmd, 
+                    stdout=subprocess.PIPE, 
+                    stderr=subprocess.PIPE,
+                    env=env
+                )
+                stdout, stderr = process.communicate()
+                
+                if process.returncode != 0:
+                    logger.error(f"ffmpeg failed: {stderr.decode('utf-8')}")
+                    
+                    # If ffmpeg fails, create a simple file
+                    with open(output_path, 'w') as f:
+                        f.write(f"Video for: {prompt}\nFailed to create due to memory constraints.")
+                    
+                    # Try to create at least a small MP4 file with one frame
+                    try:
+                        # Create a static image
+                        preview_path = str(Path(output_path).with_suffix('.jpg'))
+                        with open(preview_path, 'wb') as f:
+                            # Create a small black JPG with text using bash
+                            simple_cmd = [
+                                "convert", "-size", "320x240", "xc:black", "-gravity", "center",
+                                "-pointsize", "24", "-fill", "white", "-annotate", "0", prompt,
+                                "jpg:-"
+                            ]
+                            img_process = subprocess.Popen(simple_cmd, stdout=f, stderr=subprocess.PIPE, env=env)
+                            img_process.communicate()
+                            
+                            if img_process.returncode == 0:
+                                logger.info(f"Created static preview image at {preview_path}")
+                    except Exception as e:
+                        logger.error(f"Failed to create preview image: {e}")
+                    
+                    return False
+                else:
+                    logger.info(f"Successfully created minimal video at {output_path}")
+                    return True
         except Exception as e:
-            logger.error(f"Error creating placeholder: {e}")
-            return False
+            logger.error(f"Error creating minimal video: {e}")
+            
+            # Fallback to a simple file
+            try:
+                os.makedirs(os.path.dirname(output_path), exist_ok=True)
+                with open(output_path, 'w') as f:
+                    f.write(f"Video for: {prompt}\nFailed to create due to memory constraints.")
+                return False
+            except:
+                return False
 
 
 def patch_video_generation():
@@ -218,42 +299,83 @@ def patch_video_generation():
             logger.info(f"Using Render free tier video generation for: {prompt}")
             
             # Check if video processing is completely disabled
-            if DISABLE_VIDEO_PROCESSING:
-                logger.warning("Video processing is disabled to save memory")
-                return RenderFreeVideoHandler.create_placeholder_video(output_path)
+            disable_processing = os.environ.get("DISABLE_VIDEO_PROCESSING", "").lower() == "true"
             
-            # First try to use a pre-rendered static video
+            # Always try to use a pre-rendered static video first
             static_video = RenderFreeVideoHandler.get_static_video(prompt)
             if static_video:
                 # Copy the static video to output path
                 try:
                     shutil.copy2(static_video, output_path)
                     logger.info(f"Used pre-rendered video for: {prompt}")
+                    
+                    # Create a preview image for the UI
+                    from pathlib import Path
+                    preview_path = str(Path(output_path).parent / f"{task_id}.jpg")
+                    try:
+                        # Extract first frame as preview using minimal memory
+                        cmd = [
+                            "ffmpeg", "-i", static_video,
+                            "-vframes", "1", "-f", "image2",
+                            "-loglevel", "error",
+                            preview_path
+                        ]
+                        import subprocess
+                        subprocess.run(cmd, capture_output=True)
+                    except Exception:
+                        # On failure, just create an empty preview file
+                        with open(preview_path, 'w') as f:
+                            f.write(f"Preview for {prompt}")
+                    
                     return True
                 except Exception as e:
                     logger.error(f"Error copying static video: {e}")
             
-            # If we get here, try to create a slideshow from images instead of video
-            try:
-                # Generate some images (using original implementation code)
-                # Normally you'd call functions to generate images, but for simplicity:
-                from pathlib import Path
-                
-                # For now, just create a text file indicating what would happen
-                # In a real implementation, this would generate or use existing images
-                if RenderFreeVideoHandler.create_placeholder_video(output_path):
-                    # Create a placeholder file with first frame for preview
-                    preview_path = str(Path(output_path).parent / f"{task_id}.jpg")
-                    with open(preview_path, 'w') as f:
-                        f.write("This is a placeholder preview image")
-                    
-                    logger.info(f"Created placeholder for {prompt}")
-                    return True
-            except Exception as e:
-                logger.error(f"Error in slideshow fallback: {e}")
+            # If we get here and video processing is disabled, create minimal fallback
+            if disable_processing:
+                logger.warning("Full video processing is disabled, creating minimal video")
+                # Clean up the prompt for use in the video text
+                safe_prompt = prompt.replace("'", "").replace("\"", "")[:50]  # Limit length
+                return RenderFreeVideoHandler.create_minimal_video(output_path, safe_prompt)
             
-            # As a last resort, create a simple placeholder file
-            return RenderFreeVideoHandler.create_placeholder_video(output_path)
+            # Otherwise, try to generate an extremely minimal video
+            try:
+                logger.info(f"Generating minimal video for prompt: {prompt}")
+                # Clean up the prompt for use in the video text
+                safe_prompt = prompt.replace("'", "").replace("\"", "")[:50]  # Limit length
+                
+                # Create minimal video with text
+                success = RenderFreeVideoHandler.create_minimal_video(output_path, safe_prompt)
+                
+                # Create a preview image
+                from pathlib import Path
+                preview_path = str(Path(output_path).parent / f"{task_id}.jpg")
+                
+                # Try to extract first frame for preview
+                try:
+                    if os.path.exists(output_path) and os.path.getsize(output_path) > 0:
+                        cmd = [
+                            "ffmpeg", "-i", output_path,
+                            "-vframes", "1", "-f", "image2",
+                            "-loglevel", "error",
+                            preview_path
+                        ]
+                        import subprocess
+                        subprocess.run(cmd, capture_output=True)
+                except Exception as e:
+                    logger.error(f"Failed to extract preview: {e}")
+                    # Create fallback preview
+                    with open(preview_path, 'w') as f:
+                        f.write(f"Preview for {safe_prompt}")
+                
+                return success
+            except Exception as e:
+                logger.error(f"Error creating minimal video: {e}")
+            
+            # As a last resort, create a minimal text video
+            logger.warning(f"Using last resort minimal video for {prompt}")
+            safe_prompt = prompt.replace("'", "").replace("\"", "")[:30]  # Very short for stability
+            return RenderFreeVideoHandler.create_minimal_video(output_path, safe_prompt)
         
         # Replace the original function with our version
         from app.services.generation import video_generation
