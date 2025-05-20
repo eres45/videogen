@@ -1,22 +1,31 @@
 services:
   - type: web
-    name: moneyprinterturbo
+    name: videogen
     env: python
+    plan: free
     buildCommand: ./build.sh
-    startCommand: bash ./start.sh
-    plan: standard
-    runtime: python
+    startCommand: ./start.sh
+    disk:
+      name: video-storage
+      mountPath: /tmp/video-cache
+      sizeGB: 1
     envVars:
-      - key: PYTHON_VERSION
-        value: 3.11.0
+      - key: RENDER_EXTERNAL_URL
+        sync: false
+      - key: MAX_CONCURRENT_TASKS
+        value: "1"
+      - key: RENDER_MEMORY_LIMIT
+        value: "512"
+      - key: EXTREME_MEMORY_SAVING
+        value: "true"
+      - key: DISABLE_VIDEO_PROCESSING
+        value: "true"
       - key: PEXELS_API_KEY
         value: "wDEUJxQv8o9VV0gYat55LnXh0Sl9YlKBH5qZCOlDp03oEKGxJSXX23IH"
       - key: LLM_PROVIDER
         value: "pollinations"
       - key: POLLINATIONS_MODEL
         value: "openai-fast"
-      - key: MAX_CONCURRENT_TASKS
-        value: "1"
       - key: CLEANUP_DAYS
         value: "2"
     healthCheckPath: /health

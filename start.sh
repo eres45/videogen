@@ -75,15 +75,58 @@ pip install --no-cache-dir psutil
 echo "Starting application on port: $PORT"
 echo "External URL: $RENDER_EXTERNAL_URL"
 
-# Apply aggressive memory optimizations for Render
-echo "Applying aggressive memory optimizations for Render..."
-python render_memory_fix.py &
+# Check if we're in extreme memory saving mode
+if [ "${EXTREME_MEMORY_SAVING:-false}" = "true" ]; then
+    echo "[RENDER FREE TIER] Starting in extreme memory saving mode"
+    
+    # Create static directory for video placeholders
+    mkdir -p static_videos
+    
+    # Create wrapper for ffmpeg that doesn't actually process video
+    echo "Creating static ffmpeg wrapper..."
+    chmod +x static_ffmpeg_wrapper.sh
+    
+    # Replace ffmpeg with our dummy wrapper
+    export PATH="$(pwd):$PATH"
+    alias ffmpeg="$(pwd)/static_ffmpeg_wrapper.sh"
+    
+    # Set ultra-aggressive memory limits
+    export MALLOC_ARENA_MAX=1
+    export MALLOC_MMAP_THRESHOLD_=131072
+    export MALLOC_TRIM_THRESHOLD_=131072
+    export PYTHONMALLOC=malloc
+    export PYTHONUNBUFFERED=1
+    export OPENBLAS_NUM_THREADS=1
+    export OMP_NUM_THREADS=1
+    export MKL_NUM_THREADS=1
+    export NUMEXPR_NUM_THREADS=1
+    export DISABLE_VIDEO_PROCESSING=true
+    
+    # Disable imagemagick
+    export MAGICK_CONFIGURE_PATH=/dev/null
+    
+    # Ensure low memory Python settings
+    export PYTHONHASHSEED=0
+    
+    # Hard memory limit
+    ulimit -v 536870912  # 512MB virtual memory limit
+    
+    echo "Starting in PLACEHOLDER MODE - no actual video processing will occur"
+    echo "This is required due to memory constraints on the free tier"
+    
+    # Start application with minimal features
+    python -u main.py
+else
+    # Apply regular memory optimizations for Render
+    echo "Applying memory optimizations for Render..."
+    python render_memory_fix.py &
 
-# Start the application with reduced memory settings
-echo "Starting main application in memory-efficient mode..."
-export PYTHONMALLOC=malloc
-export MALLOC_TRIM_THRESHOLD_=65536
-export PYTHONUNBUFFERED=1
-export OPENBLAS_NUM_THREADS=1
-export OMP_NUM_THREADS=1
-python -u main.py
+    # Start the application with reduced memory settings
+    echo "Starting main application in memory-efficient mode..."
+    export PYTHONMALLOC=malloc
+    export MALLOC_TRIM_THRESHOLD_=65536
+    export PYTHONUNBUFFERED=1
+    export OPENBLAS_NUM_THREADS=1
+    export OMP_NUM_THREADS=1
+    python -u main.py
+fi
